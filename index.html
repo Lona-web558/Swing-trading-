@@ -1,0 +1,1372 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Forex Swing Trading Bot - RSI/MACD Strategy</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Chart.js for data visualization -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --primary-dark: #0a0e27;
+            --secondary-dark: #151937;
+            --accent-cyan: #00d4ff;
+            --accent-green: #00ff88;
+            --accent-red: #ff0055;
+            --accent-yellow: #ffd900;
+            --text-primary: #e8edf3;
+            --text-secondary: #8b95a8;
+            --border-color: #1e2640;
+            --card-bg: #0f1528;
+            --input-bg: #1a1f3a;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #0d1229 50%, var(--secondary-dark) 100%);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Animated background grid */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+        
+        .container-fluid {
+            position: relative;
+            z-index: 1;
+        }
+        
+        /* Header */
+        .header {
+            background: rgba(15, 21, 40, 0.8);
+            backdrop-filter: blur(10px);
+            border-bottom: 2px solid var(--accent-cyan);
+            padding: 1.5rem 0;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 30px rgba(0, 212, 255, 0.1);
+        }
+        
+        .logo {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -1px;
+        }
+        
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 50px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation: pulse 2s ease-in-out infinite;
+        }
+        
+        .status-active { background: var(--accent-green); }
+        .status-inactive { background: var(--text-secondary); }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.2); }
+        }
+        
+        /* Cards */
+        .custom-card {
+            background: rgba(15, 21, 40, 0.9);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .custom-card:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 8px 32px rgba(0, 212, 255, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--accent-cyan);
+            font-family: 'JetBrains Mono', monospace;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Form controls */
+        .form-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .form-control, .form-select {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 8px;
+            padding: 0.75rem;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.3s ease;
+        }
+        
+        .form-control:focus, .form-select:focus {
+            background: var(--input-bg);
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+            box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.15);
+        }
+        
+        .form-control::placeholder {
+            color: var(--text-secondary);
+            opacity: 0.6;
+        }
+        
+        /* Buttons */
+        .btn-custom {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            padding: 0.75rem 2rem;
+            border-radius: 8px;
+            border: none;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 0.85rem;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .btn-custom::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            transition: left 0.3s ease;
+        }
+        
+        .btn-custom:hover::before {
+            left: 100%;
+        }
+        
+        .btn-start {
+            background: linear-gradient(135deg, var(--accent-green), #00cc70);
+            color: white;
+        }
+        
+        .btn-start:hover {
+            background: linear-gradient(135deg, #00cc70, var(--accent-green));
+            box-shadow: 0 4px 20px rgba(0, 255, 136, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn-stop {
+            background: linear-gradient(135deg, var(--accent-red), #cc0044);
+            color: white;
+        }
+        
+        .btn-stop:hover {
+            background: linear-gradient(135deg, #cc0044, var(--accent-red));
+            box-shadow: 0 4px 20px rgba(255, 0, 85, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        .btn-clear {
+            background: var(--secondary-dark);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+        }
+        
+        .btn-clear:hover {
+            background: var(--border-color);
+            border-color: var(--accent-cyan);
+            color: var(--text-primary);
+        }
+        
+        /* Metrics */
+        .metric-box {
+            background: linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(0, 255, 136, 0.05));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .metric-box:hover {
+            border-color: var(--accent-cyan);
+            transform: scale(1.02);
+        }
+        
+        .metric-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.5rem;
+        }
+        
+        .metric-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.8rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .metric-value.positive { 
+            background: linear-gradient(135deg, var(--accent-green), #00cc70);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .metric-value.negative { 
+            background: linear-gradient(135deg, var(--accent-red), #cc0044);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        /* Signals */
+        .signal-item {
+            background: var(--card-bg);
+            border-left: 3px solid var(--accent-cyan);
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+            border-radius: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        .signal-item:hover {
+            background: rgba(0, 212, 255, 0.05);
+            transform: translateX(5px);
+        }
+        
+        .signal-buy { border-left-color: var(--accent-green); }
+        .signal-sell { border-left-color: var(--accent-red); }
+        
+        .signal-timestamp {
+            color: var(--text-secondary);
+            font-size: 0.75rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        .signal-action {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .signal-buy .signal-action { color: var(--accent-green); }
+        .signal-sell .signal-action { color: var(--accent-red); }
+        
+        /* Chart container */
+        .chart-container {
+            position: relative;
+            height: 300px;
+            margin-top: 1rem;
+        }
+        
+        /* Indicator values */
+        .indicator-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        
+        .indicator-item {
+            background: var(--input-bg);
+            padding: 0.75rem;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .indicator-name {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 0.25rem;
+        }
+        
+        .indicator-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--accent-cyan);
+        }
+        
+        /* Scrollbar */
+        .signals-container {
+            max-height: 500px;
+            overflow-y: auto;
+            padding-right: 0.5rem;
+        }
+        
+        .signals-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .signals-container::-webkit-scrollbar-track {
+            background: var(--input-bg);
+            border-radius: 10px;
+        }
+        
+        .signals-container::-webkit-scrollbar-thumb {
+            background: var(--accent-cyan);
+            border-radius: 10px;
+        }
+        
+        .signals-container::-webkit-scrollbar-thumb:hover {
+            background: var(--accent-green);
+        }
+        
+        /* Alert message */
+        .alert-custom {
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid var(--accent-cyan);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .logo {
+                font-size: 1.3rem;
+            }
+            
+            .metric-value {
+                font-size: 1.4rem;
+            }
+            
+            .btn-custom {
+                padding: 0.6rem 1.5rem;
+                font-size: 0.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    
+    <!-- Header -->
+    <div class="header">
+        <div class="container-fluid">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h1 class="logo mb-0">⚡ FOREX SWING BOT</h1>
+                </div>
+                <div class="col-md-6 text-md-end mt-3 mt-md-0">
+                    <div class="status-indicator">
+                        <span class="status-dot status-inactive" id="statusDot"></span>
+                        <span id="statusText">Inactive</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid px-4">
+        
+        <!-- Alert -->
+        <div class="alert-custom">
+            <strong>⚠️ DEMO MODE:</strong> This bot generates simulated forex data for demonstration purposes. Real trading requires connection to a forex API with live market data.
+        </div>
+
+        <div class="row">
+            
+            <!-- Left Column: Configuration -->
+            <div class="col-lg-4">
+                
+                <!-- Settings Card -->
+                <div class="custom-card">
+                    <h3 class="card-title">⚙️ Configuration</h3>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Currency Pair</label>
+                        <select class="form-select" id="currencyPair">
+                            <option value="EUR/USD">EUR/USD</option>
+                            <option value="GBP/USD">GBP/USD</option>
+                            <option value="USD/JPY">USD/JPY</option>
+                            <option value="USD/CHF">USD/CHF</option>
+                            <option value="AUD/USD">AUD/USD</option>
+                            <option value="XAU/USD">XAU/USD (Gold)</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Timeframe</label>
+                        <select class="form-select" id="timeframe">
+                            <option value="1m">1 Minute</option>
+                            <option value="5m">5 Minutes</option>
+                            <option value="15m">15 Minutes</option>
+                            <option value="1h" selected>1 Hour</option>
+                            <option value="4h">4 Hours</option>
+                            <option value="1d">1 Day</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">RSI Period</label>
+                        <input type="number" class="form-control" id="rsiPeriod" value="14" min="2" max="50">
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">RSI Oversold</label>
+                                <input type="number" class="form-control" id="rsiOversold" value="30" min="0" max="50">
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-3">
+                                <label class="form-label">RSI Overbought</label>
+                                <input type="number" class="form-control" id="rsiOverbought" value="70" min="50" max="100">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label">MACD Fast</label>
+                                <input type="number" class="form-control" id="macdFast" value="12" min="1" max="50">
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label">MACD Slow</label>
+                                <input type="number" class="form-control" id="macdSlow" value="26" min="1" max="100">
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="mb-3">
+                                <label class="form-label">MACD Signal</label>
+                                <input type="number" class="form-control" id="macdSignal" value="9" min="1" max="50">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Check Interval (seconds)</label>
+                        <input type="number" class="form-control" id="checkInterval" value="30" min="10" max="300">
+                    </div>
+                    
+                    <div class="d-grid gap-2">
+                        <button class="btn btn-custom btn-start" id="startBtn">Start Bot</button>
+                        <button class="btn btn-custom btn-stop d-none" id="stopBtn">Stop Bot</button>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="custom-card">
+                    <h3 class="card-title">📊 Performance</h3>
+                    
+                    <div class="row g-3">
+                        <div class="col-12">
+                            <div class="metric-box" style="background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(0, 255, 136, 0.1));">
+                                <div class="metric-label">Demo Balance</div>
+                                <div class="metric-value" id="demoBalance" style="font-size: 2.2rem;">$100,000.00</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-box">
+                                <div class="metric-label">Total Trades</div>
+                                <div class="metric-value" id="totalTrades">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-box">
+                                <div class="metric-label">Win Rate</div>
+                                <div class="metric-value" id="winRate">0%</div>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <div class="metric-box">
+                                <div class="metric-label">Total Profit/Loss</div>
+                                <div class="metric-value" id="totalProfit">$0.00</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-box">
+                                <div class="metric-label">Total Signals</div>
+                                <div class="metric-value" id="totalSignals">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-box">
+                                <div class="metric-label">Runtime</div>
+                                <div class="metric-value" id="runtime">00:00</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-box">
+                                <div class="metric-label">Winning Trades</div>
+                                <div class="metric-value positive" id="winningTrades">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="metric-box">
+                                <div class="metric-label">Losing Trades</div>
+                                <div class="metric-value negative" id="losingTrades">0</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+
+            <!-- Middle Column: Charts & Indicators -->
+            <div class="col-lg-4">
+                
+                <!-- Price Chart -->
+                <div class="custom-card">
+                    <h3 class="card-title">📈 Price Action</h3>
+                    <div class="chart-container">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Current Indicators -->
+                <div class="custom-card">
+                    <h3 class="card-title">🎯 Current Indicators</h3>
+                    
+                    <div class="indicator-grid">
+                        <div class="indicator-item">
+                            <div class="indicator-name">Current Price</div>
+                            <div class="indicator-value" id="currentPrice">-</div>
+                        </div>
+                        <div class="indicator-item">
+                            <div class="indicator-name">RSI (14)</div>
+                            <div class="indicator-value" id="currentRSI">-</div>
+                        </div>
+                        <div class="indicator-item">
+                            <div class="indicator-name">MACD</div>
+                            <div class="indicator-value" id="currentMACD">-</div>
+                        </div>
+                        <div class="indicator-item">
+                            <div class="indicator-name">MACD Signal</div>
+                            <div class="indicator-value" id="currentSignal">-</div>
+                        </div>
+                        <div class="indicator-item">
+                            <div class="indicator-name">MACD Histogram</div>
+                            <div class="indicator-value" id="currentHistogram">-</div>
+                        </div>
+                        <div class="indicator-item">
+                            <div class="indicator-name">Trend</div>
+                            <div class="indicator-value" id="currentTrend">-</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RSI Chart -->
+                <div class="custom-card">
+                    <h3 class="card-title">📉 RSI Indicator</h3>
+                    <div class="chart-container">
+                        <canvas id="rsiChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Signals History -->
+            <div class="col-lg-4">
+                
+                <div class="custom-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h3 class="card-title mb-0">🔔 Trading Signals</h3>
+                        <button class="btn btn-custom btn-clear btn-sm" id="clearSignalsBtn">Clear History</button>
+                    </div>
+                    
+                    <div class="signals-container" id="signalsContainer">
+                        <div class="text-center text-secondary py-4">
+                            <p>No signals yet. Start the bot to generate trading signals.</p>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Trading Bot Class
+        class ForexTradingBot {
+            constructor() {
+                this.isRunning = false;
+                this.interval = null;
+                this.priceHistory = [];
+                this.rsiHistory = [];
+                this.macdHistory = [];
+                this.signals = [];
+                this.trades = [];
+                this.openTrade = null;
+                this.totalProfit = 0;
+                this.winningTrades = 0;
+                this.losingTrades = 0;
+                this.demoBalance = 100000; // Starting demo balance
+                this.startTime = null;
+                this.runtimeInterval = null;
+                this.basePrice = 1.0850; // Default starting price for EUR/USD
+                this.lotSize = 10000; // Standard lot size
+                
+                // Base prices for different pairs
+                this.basePrices = {
+                    'EUR/USD': 1.0850,
+                    'GBP/USD': 1.2650,
+                    'USD/JPY': 148.50,
+                    'USD/CHF': 0.8750,
+                    'AUD/USD': 0.6550,
+                    'XAU/USD': 2650.00  // Gold price
+                };
+                
+                // Initialize charts
+                this.initCharts();
+                
+                // Load saved data from localStorage
+                this.loadFromStorage();
+                
+                // Bind events
+                this.bindEvents();
+                
+                // Update display
+                this.updateDisplay();
+                
+                // Set initial base price based on selected pair
+                this.updateBasePriceForPair();
+            }
+            
+            initCharts() {
+                // Price Chart
+                const priceCtx = document.getElementById('priceChart').getContext('2d');
+                this.priceChart = new Chart(priceCtx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Price',
+                            data: [],
+                            borderColor: '#00d4ff',
+                            backgroundColor: 'rgba(0, 212, 255, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 21, 40, 0.95)',
+                                titleColor: '#00d4ff',
+                                bodyColor: '#e8edf3',
+                                borderColor: '#00d4ff',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: { color: 'rgba(30, 38, 64, 0.5)' },
+                                ticks: { color: '#8b95a8', maxTicksLimit: 8 }
+                            },
+                            y: {
+                                display: true,
+                                grid: { color: 'rgba(30, 38, 64, 0.5)' },
+                                ticks: { color: '#8b95a8' }
+                            }
+                        }
+                    }
+                });
+                
+                // RSI Chart
+                const rsiCtx = document.getElementById('rsiChart').getContext('2d');
+                this.rsiChart = new Chart(rsiCtx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'RSI',
+                            data: [],
+                            borderColor: '#00ff88',
+                            backgroundColor: 'rgba(0, 255, 136, 0.1)',
+                            borderWidth: 2,
+                            tension: 0.4,
+                            fill: true,
+                            pointRadius: 0,
+                            pointHoverRadius: 5
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: false },
+                            tooltip: {
+                                backgroundColor: 'rgba(15, 21, 40, 0.95)',
+                                titleColor: '#00ff88',
+                                bodyColor: '#e8edf3',
+                                borderColor: '#00ff88',
+                                borderWidth: 1,
+                                padding: 10,
+                                displayColors: false
+                            }
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                grid: { color: 'rgba(30, 38, 64, 0.5)' },
+                                ticks: { color: '#8b95a8', maxTicksLimit: 8 }
+                            },
+                            y: {
+                                min: 0,
+                                max: 100,
+                                display: true,
+                                grid: { color: 'rgba(30, 38, 64, 0.5)' },
+                                ticks: { color: '#8b95a8' }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            bindEvents() {
+                document.getElementById('startBtn').addEventListener('click', () => this.start());
+                document.getElementById('stopBtn').addEventListener('click', () => this.stop());
+                document.getElementById('clearSignalsBtn').addEventListener('click', () => this.clearSignals());
+                
+                // Handle currency pair changes
+                document.getElementById('currencyPair').addEventListener('change', () => {
+                    this.updateBasePriceForPair();
+                    this.saveSettings();
+                });
+                
+                // Save settings on change
+                ['timeframe', 'rsiPeriod', 'rsiOversold', 'rsiOverbought', 
+                 'macdFast', 'macdSlow', 'macdSignal', 'checkInterval'].forEach(id => {
+                    document.getElementById(id).addEventListener('change', () => this.saveSettings());
+                });
+            }
+            
+            updateBasePriceForPair() {
+                const pair = document.getElementById('currencyPair').value;
+                this.basePrice = this.basePrices[pair] || 1.0850;
+                
+                // Adjust lot size for Gold (typically traded in ounces)
+                if (pair === 'XAU/USD') {
+                    this.lotSize = 100; // 1 lot = 100 ounces of gold
+                } else {
+                    this.lotSize = 10000; // Standard forex lot
+                }
+            }
+            
+            start() {
+                if (this.isRunning) return;
+                
+                this.isRunning = true;
+                this.startTime = Date.now();
+                
+                // Update UI
+                document.getElementById('startBtn').classList.add('d-none');
+                document.getElementById('stopBtn').classList.remove('d-none');
+                document.getElementById('statusDot').classList.remove('status-inactive');
+                document.getElementById('statusDot').classList.add('status-active');
+                document.getElementById('statusText').textContent = 'Active';
+                
+                // Start runtime counter
+                this.runtimeInterval = setInterval(() => this.updateRuntime(), 1000);
+                
+                // Start trading loop
+                const checkInterval = parseInt(document.getElementById('checkInterval').value) * 1000;
+                this.interval = setInterval(() => this.runAnalysis(), checkInterval);
+                
+                // Run first analysis immediately
+                this.runAnalysis();
+                
+                this.saveToStorage();
+            }
+            
+            stop() {
+                if (!this.isRunning) return;
+                
+                this.isRunning = false;
+                clearInterval(this.interval);
+                clearInterval(this.runtimeInterval);
+                
+                // Update UI
+                document.getElementById('startBtn').classList.remove('d-none');
+                document.getElementById('stopBtn').classList.add('d-none');
+                document.getElementById('statusDot').classList.remove('status-active');
+                document.getElementById('statusDot').classList.add('status-inactive');
+                document.getElementById('statusText').textContent = 'Inactive';
+                
+                this.saveToStorage();
+            }
+            
+            runAnalysis() {
+                // Generate simulated price data
+                const newPrice = this.generatePrice();
+                const timestamp = new Date().toLocaleTimeString();
+                
+                // Add to history
+                this.priceHistory.push(newPrice);
+                if (this.priceHistory.length > 50) {
+                    this.priceHistory.shift();
+                }
+                
+                // Calculate indicators
+                const rsiPeriod = parseInt(document.getElementById('rsiPeriod').value);
+                const rsi = this.calculateRSI(this.priceHistory, rsiPeriod);
+                const macd = this.calculateMACD(this.priceHistory);
+                
+                this.rsiHistory.push(rsi);
+                if (this.rsiHistory.length > 50) {
+                    this.rsiHistory.shift();
+                }
+                
+                this.macdHistory.push(macd);
+                if (this.macdHistory.length > 50) {
+                    this.macdHistory.shift();
+                }
+                
+                // Check for signals
+                this.checkSignals(newPrice, rsi, macd, timestamp);
+                
+                // Update charts and display
+                this.updateCharts(timestamp);
+                this.updateIndicators(newPrice, rsi, macd);
+                this.saveToStorage();
+            }
+            
+            generatePrice() {
+                // Simulate price movement with random walk
+                const pair = document.getElementById('currencyPair').value;
+                
+                // Gold has different volatility than forex pairs
+                let volatility = 0.0020; // ±0.20% for forex
+                if (pair === 'XAU/USD') {
+                    volatility = 0.0050; // ±0.50% for gold (more volatile)
+                }
+                
+                const change = (Math.random() - 0.5) * volatility;
+                this.basePrice += this.basePrice * change;
+                
+                // Determine decimal places based on pair
+                let decimals = 5;
+                if (pair === 'USD/JPY') decimals = 3;
+                if (pair === 'XAU/USD') decimals = 2;
+                
+                return parseFloat(this.basePrice.toFixed(decimals));
+            }
+            
+            calculateRSI(prices, period) {
+                if (prices.length < period + 1) return 50;
+                
+                let gains = 0;
+                let losses = 0;
+                
+                for (let i = prices.length - period; i < prices.length; i++) {
+                    const change = prices[i] - prices[i - 1];
+                    if (change > 0) gains += change;
+                    else losses -= change;
+                }
+                
+                const avgGain = gains / period;
+                const avgLoss = losses / period;
+                
+                if (avgLoss === 0) return 100;
+                
+                const rs = avgGain / avgLoss;
+                const rsi = 100 - (100 / (1 + rs));
+                
+                return parseFloat(rsi.toFixed(2));
+            }
+            
+            calculateMACD(prices) {
+                const fastPeriod = parseInt(document.getElementById('macdFast').value);
+                const slowPeriod = parseInt(document.getElementById('macdSlow').value);
+                const signalPeriod = parseInt(document.getElementById('macdSignal').value);
+                
+                if (prices.length < slowPeriod) {
+                    return { macd: 0, signal: 0, histogram: 0 };
+                }
+                
+                const fastEMA = this.calculateEMA(prices, fastPeriod);
+                const slowEMA = this.calculateEMA(prices, slowPeriod);
+                const macd = fastEMA - slowEMA;
+                
+                // For signal line, we'd need to calculate EMA of MACD values
+                // Simplified here for demo purposes
+                const signal = macd * 0.9; // Simplified
+                const histogram = macd - signal;
+                
+                return {
+                    macd: parseFloat(macd.toFixed(5)),
+                    signal: parseFloat(signal.toFixed(5)),
+                    histogram: parseFloat(histogram.toFixed(5))
+                };
+            }
+            
+            calculateEMA(prices, period) {
+                const k = 2 / (period + 1);
+                let ema = prices[0];
+                
+                for (let i = 1; i < prices.length; i++) {
+                    ema = prices[i] * k + ema * (1 - k);
+                }
+                
+                return ema;
+            }
+            
+            checkSignals(price, rsi, macd, timestamp) {
+                const rsiOversold = parseInt(document.getElementById('rsiOversold').value);
+                const rsiOverbought = parseInt(document.getElementById('rsiOverbought').value);
+                const currencyPair = document.getElementById('currencyPair').value;
+                
+                let signal = null;
+                
+                // Buy signal: RSI oversold AND MACD histogram positive
+                if (rsi < rsiOversold && macd.histogram > 0) {
+                    // If we have an open SELL trade, close it
+                    if (this.openTrade && this.openTrade.type === 'SELL') {
+                        this.closeTrade(price, timestamp);
+                    }
+                    
+                    // Open new BUY trade
+                    if (!this.openTrade) {
+                        signal = {
+                            type: 'BUY',
+                            timestamp: timestamp,
+                            price: price,
+                            rsi: rsi,
+                            macd: macd.macd,
+                            reason: `RSI oversold (${rsi}) + MACD bullish crossover`
+                        };
+                        
+                        this.openTrade = {
+                            type: 'BUY',
+                            entryPrice: price,
+                            entryTime: timestamp,
+                            rsi: rsi,
+                            macd: macd.macd
+                        };
+                    }
+                }
+                // Sell signal: RSI overbought AND MACD histogram negative
+                else if (rsi > rsiOverbought && macd.histogram < 0) {
+                    // If we have an open BUY trade, close it
+                    if (this.openTrade && this.openTrade.type === 'BUY') {
+                        this.closeTrade(price, timestamp);
+                    }
+                    
+                    // Open new SELL trade
+                    if (!this.openTrade) {
+                        signal = {
+                            type: 'SELL',
+                            timestamp: timestamp,
+                            price: price,
+                            rsi: rsi,
+                            macd: macd.macd,
+                            reason: `RSI overbought (${rsi}) + MACD bearish crossover`
+                        };
+                        
+                        this.openTrade = {
+                            type: 'SELL',
+                            entryPrice: price,
+                            entryTime: timestamp,
+                            rsi: rsi,
+                            macd: macd.macd
+                        };
+                    }
+                }
+                
+                if (signal) {
+                    this.signals.unshift(signal);
+                    this.addSignalToUI(signal, currencyPair);
+                    this.updateMetrics();
+                }
+            }
+            
+            closeTrade(exitPrice, exitTime) {
+                if (!this.openTrade) return;
+                
+                const entryPrice = this.openTrade.entryPrice;
+                let priceDiff = 0;
+                
+                if (this.openTrade.type === 'BUY') {
+                    priceDiff = exitPrice - entryPrice;
+                } else { // SELL
+                    priceDiff = entryPrice - exitPrice;
+                }
+                
+                const profitLoss = priceDiff * this.lotSize;
+                
+                const trade = {
+                    type: this.openTrade.type,
+                    entryPrice: entryPrice,
+                    exitPrice: exitPrice,
+                    entryTime: this.openTrade.entryTime,
+                    exitTime: exitTime,
+                    profitLoss: profitLoss,
+                    isWin: profitLoss > 0
+                };
+                
+                this.trades.push(trade);
+                this.totalProfit += profitLoss;
+                
+                if (profitLoss > 0) {
+                    this.winningTrades++;
+                } else {
+                    this.losingTrades++;
+                }
+                
+                this.openTrade = null;
+                this.saveToStorage();
+            }
+            
+            addSignalToUI(signal, pair) {
+                const container = document.getElementById('signalsContainer');
+                
+                // Remove placeholder
+                if (container.querySelector('.text-center')) {
+                    container.innerHTML = '';
+                }
+                
+                // Determine decimal places for price display
+                let decimals = 5;
+                if (pair === 'USD/JPY') decimals = 3;
+                if (pair === 'XAU/USD') decimals = 2;
+                
+                // Check if this signal closed a trade
+                let tradeInfo = '';
+                if (this.trades.length > 0) {
+                    const lastTrade = this.trades[this.trades.length - 1];
+                    if (lastTrade.exitTime === signal.timestamp) {
+                        const plColor = lastTrade.profitLoss > 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+                        const plSign = lastTrade.profitLoss > 0 ? '+' : '';
+                        tradeInfo = `<div style="color: ${plColor}; font-weight: 600; margin-top: 0.25rem;">
+                            P/L: ${plSign}$${lastTrade.profitLoss.toFixed(2)}
+                        </div>`;
+                    }
+                }
+                
+                const signalDiv = document.createElement('div');
+                signalDiv.className = `signal-item signal-${signal.type.toLowerCase()}`;
+                signalDiv.innerHTML = `
+                    <div class="signal-timestamp">${signal.timestamp}</div>
+                    <div class="signal-action">${signal.type} ${pair}</div>
+                    <div class="text-secondary" style="font-size: 0.75rem;">
+                        Price: ${signal.price.toFixed(decimals)} | RSI: ${signal.rsi}<br>
+                        ${signal.reason}
+                    </div>
+                    ${tradeInfo}
+                `;
+                
+                container.insertBefore(signalDiv, container.firstChild);
+            }
+            
+            updateCharts(timestamp) {
+                // Update price chart
+                this.priceChart.data.labels.push(timestamp);
+                this.priceChart.data.datasets[0].data.push(this.priceHistory[this.priceHistory.length - 1]);
+                
+                if (this.priceChart.data.labels.length > 30) {
+                    this.priceChart.data.labels.shift();
+                    this.priceChart.data.datasets[0].data.shift();
+                }
+                
+                this.priceChart.update('none');
+                
+                // Update RSI chart
+                this.rsiChart.data.labels.push(timestamp);
+                this.rsiChart.data.datasets[0].data.push(this.rsiHistory[this.rsiHistory.length - 1]);
+                
+                if (this.rsiChart.data.labels.length > 30) {
+                    this.rsiChart.data.labels.shift();
+                    this.rsiChart.data.datasets[0].data.shift();
+                }
+                
+                this.rsiChart.update('none');
+            }
+            
+            updateIndicators(price, rsi, macd) {
+                const pair = document.getElementById('currencyPair').value;
+                
+                // Format price based on pair
+                let decimals = 5;
+                if (pair === 'USD/JPY') decimals = 3;
+                if (pair === 'XAU/USD') decimals = 2;
+                
+                document.getElementById('currentPrice').textContent = price.toFixed(decimals);
+                document.getElementById('currentRSI').textContent = rsi.toFixed(2);
+                document.getElementById('currentMACD').textContent = macd.macd.toFixed(5);
+                document.getElementById('currentSignal').textContent = macd.signal.toFixed(5);
+                document.getElementById('currentHistogram').textContent = macd.histogram.toFixed(5);
+                
+                // Determine trend
+                let trend = 'NEUTRAL';
+                if (rsi > 50 && macd.histogram > 0) trend = 'BULLISH';
+                else if (rsi < 50 && macd.histogram < 0) trend = 'BEARISH';
+                
+                document.getElementById('currentTrend').textContent = trend;
+            }
+            
+            updateMetrics() {
+                const buySignals = this.signals.filter(s => s.type === 'BUY').length;
+                const sellSignals = this.signals.filter(s => s.type === 'SELL').length;
+                const totalTrades = this.trades.length;
+                const winRate = totalTrades > 0 ? ((this.winningTrades / totalTrades) * 100).toFixed(1) : 0;
+                
+                // Update demo balance
+                const currentBalance = this.demoBalance + this.totalProfit;
+                const balanceElement = document.getElementById('demoBalance');
+                balanceElement.textContent = `$${currentBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                
+                // Color the balance based on profit/loss
+                balanceElement.classList.remove('positive', 'negative');
+                if (this.totalProfit > 0) {
+                    balanceElement.classList.add('positive');
+                } else if (this.totalProfit < 0) {
+                    balanceElement.classList.add('negative');
+                }
+                
+                document.getElementById('totalSignals').textContent = this.signals.length;
+                document.getElementById('totalTrades').textContent = totalTrades;
+                document.getElementById('winningTrades').textContent = this.winningTrades;
+                document.getElementById('losingTrades').textContent = this.losingTrades;
+                document.getElementById('winRate').textContent = `${winRate}%`;
+                
+                // Update total profit with color
+                const profitElement = document.getElementById('totalProfit');
+                const profitSign = this.totalProfit > 0 ? '+' : '';
+                profitElement.textContent = `${profitSign}$${this.totalProfit.toFixed(2)}`;
+                
+                // Apply color class based on profit/loss
+                profitElement.classList.remove('positive', 'negative');
+                if (this.totalProfit > 0) {
+                    profitElement.classList.add('positive');
+                } else if (this.totalProfit < 0) {
+                    profitElement.classList.add('negative');
+                }
+                
+                // Update win rate color
+                const winRateElement = document.getElementById('winRate');
+                winRateElement.classList.remove('positive', 'negative');
+                if (parseFloat(winRate) >= 50) {
+                    winRateElement.classList.add('positive');
+                } else if (parseFloat(winRate) > 0) {
+                    winRateElement.classList.add('negative');
+                }
+            }
+            
+            updateRuntime() {
+                if (!this.startTime) return;
+                
+                const elapsed = Math.floor((Date.now() - this.startTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                
+                document.getElementById('runtime').textContent = 
+                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            clearSignals() {
+                if (confirm('Are you sure you want to clear all trading history? This will reset signals, trades, profit/loss data, and demo balance to $100,000.')) {
+                    this.signals = [];
+                    this.trades = [];
+                    this.openTrade = null;
+                    this.totalProfit = 0;
+                    this.winningTrades = 0;
+                    this.losingTrades = 0;
+                    this.demoBalance = 100000;
+                    
+                    document.getElementById('signalsContainer').innerHTML = `
+                        <div class="text-center text-secondary py-4">
+                            <p>No signals yet. Start the bot to generate trading signals.</p>
+                        </div>
+                    `;
+                    this.updateMetrics();
+                    this.saveToStorage();
+                }
+            }
+            
+            saveSettings() {
+                const settings = {
+                    currencyPair: document.getElementById('currencyPair').value,
+                    timeframe: document.getElementById('timeframe').value,
+                    rsiPeriod: document.getElementById('rsiPeriod').value,
+                    rsiOversold: document.getElementById('rsiOversold').value,
+                    rsiOverbought: document.getElementById('rsiOverbought').value,
+                    macdFast: document.getElementById('macdFast').value,
+                    macdSlow: document.getElementById('macdSlow').value,
+                    macdSignal: document.getElementById('macdSignal').value,
+                    checkInterval: document.getElementById('checkInterval').value
+                };
+                
+                localStorage.setItem('forexBotSettings', JSON.stringify(settings));
+            }
+            
+            loadSettings() {
+                const saved = localStorage.getItem('forexBotSettings');
+                if (saved) {
+                    const settings = JSON.parse(saved);
+                    Object.keys(settings).forEach(key => {
+                        const element = document.getElementById(key);
+                        if (element) element.value = settings[key];
+                    });
+                }
+            }
+            
+            saveToStorage() {
+                const data = {
+                    signals: this.signals,
+                    trades: this.trades,
+                    openTrade: this.openTrade,
+                    totalProfit: this.totalProfit,
+                    winningTrades: this.winningTrades,
+                    losingTrades: this.losingTrades,
+                    demoBalance: this.demoBalance,
+                    priceHistory: this.priceHistory,
+                    rsiHistory: this.rsiHistory,
+                    macdHistory: this.macdHistory,
+                    basePrice: this.basePrice,
+                    isRunning: this.isRunning,
+                    startTime: this.startTime
+                };
+                
+                localStorage.setItem('forexBotData', JSON.stringify(data));
+            }
+            
+            loadFromStorage() {
+                // Load settings
+                this.loadSettings();
+                
+                // Load bot data
+                const saved = localStorage.getItem('forexBotData');
+                if (saved) {
+                    const data = JSON.parse(saved);
+                    this.signals = data.signals || [];
+                    this.trades = data.trades || [];
+                    this.openTrade = data.openTrade || null;
+                    this.totalProfit = data.totalProfit || 0;
+                    this.winningTrades = data.winningTrades || 0;
+                    this.losingTrades = data.losingTrades || 0;
+                    this.demoBalance = data.demoBalance || 100000;
+                    this.priceHistory = data.priceHistory || [];
+                    this.rsiHistory = data.rsiHistory || [];
+                    this.macdHistory = data.macdHistory || [];
+                    this.basePrice = data.basePrice || 1.0850;
+                }
+            }
+            
+            updateDisplay() {
+                // Restore signals to UI
+                const container = document.getElementById('signalsContainer');
+                if (this.signals.length > 0) {
+                    container.innerHTML = '';
+                    const pair = document.getElementById('currencyPair').value;
+                    this.signals.forEach(signal => this.addSignalToUI(signal, pair));
+                }
+                
+                this.updateMetrics();
+            }
+        }
+        
+        // Initialize bot when DOM is ready
+        document.addEventListener('DOMContentLoaded', () => {
+            window.bot = new ForexTradingBot();
+        });
+    </script>
+
+</body>
+</html>
